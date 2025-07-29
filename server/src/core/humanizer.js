@@ -274,63 +274,23 @@ async function performDistraction(browser, persona) {
   let newPage;
   try {
     newPage = await browser.newPage();
-    const bias = persona?.distractionBias || ["search", "news"];
-    const choice = bias[Math.floor(Math.random() * bias.length)];
+    await newPage.goto("https://www.google.com", {
+      waitUntil: "networkidle2",
+      timeout: 20000,
+    });
 
-    if (choice === "news") {
-      try {
-        await newPage.goto("https://vnexpress.net", {
-          waitUntil: "domcontentloaded",
-          timeout: 20000,
-        });
-        console.log("📰 Đọc báo từ VnExpress và click thử một tin...");
-        await randomScroll(newPage, persona);
+    const query = getRandomSentence(); // Lấy một câu ngẫu nhiên để tìm
+    console.log(`🤔 Bị phân tâm, tìm kiếm: "${query}"`);
+    await humanLikeTyping(newPage, 'textarea[name="q"]', query, persona);
 
-        const headlines = await newPage.$$("h3.title-news a");
-        if (headlines.length > 0 && !newPage.isClosed()) {
-          const link = headlines[Math.floor(Math.random() * headlines.length)];
+    await Promise.all([
+      newPage.waitForNavigation({ waitUntil: "networkidle2", timeout: 10000 }),
+      newPage.keyboard.press("Enter"),
+    ]);
 
-          await Promise.allSettled([
-            newPage.waitForNavigation({
-              waitUntil: "domcontentloaded",
-              timeout: 10000,
-            }),
-            link.click(),
-          ]);
-
-          if (!newPage.isClosed()) await randomScroll(newPage, persona);
-        }
-
-        if (!newPage.isClosed()) await randomWait(4, 7, persona);
-      } catch (e) {
-        console.warn(`⚠️ [news] Lỗi khi xử lý báo: ${e.message}`);
-      }
-    } else {
-      try {
-        await newPage.goto("https://www.google.com", {
-          waitUntil: "networkidle2",
-          timeout: 20000,
-        });
-
-        const query = getRandomSentence();
-        console.log(`🤔 Bị phân tâm, tìm kiếm: "${query}"`);
-        await humanLikeTyping(newPage, 'textarea[name="q"]', query, persona);
-
-        await Promise.allSettled([
-          newPage.waitForNavigation({
-            waitUntil: "networkidle2",
-            timeout: 10000,
-          }),
-          newPage.keyboard.press("Enter"),
-        ]);
-
-        if (!newPage.isClosed()) {
-          await randomScroll(newPage, persona);
-          await randomWait(5, 8, persona);
-        }
-      } catch (e) {
-        console.warn(`⚠️ [search] Lỗi khi xử lý tìm kiếm: ${e.message}`);
-      }
+    if (!newPage.isClosed()) {
+      await randomScroll(newPage, persona);
+      await smartWait("long_pause", persona);
     }
   } catch (e) {
     console.warn(`⚠️ Lỗi khi phân tâm: ${e.message}`);
@@ -359,11 +319,29 @@ async function simulateTabSwitching(browser) {
 }
 
 async function idleMouseMove(page) {
-  const { width, height } = await page.viewport();
-  const x = Math.floor(Math.random() * width);
-  const y = Math.floor(Math.random() * height);
-  await page.mouse.move(x, y, { steps: 15 });
-  await randomWait(0.3, 0.6);
+  // **SỬA LỖI**: Thêm cơ chế phòng thủ
+  if (page.isClosed()) {
+    console.log("...Trang đã bị đóng, không thể di chuột.");
+    return;
+  }
+
+  try {
+    const viewport = await page.viewport();
+    // Kiểm tra xem viewport có hợp lệ không
+    if (!viewport) {
+      console.log("...Không có viewport hợp lệ, không thể di chuột.");
+      return;
+    }
+
+    const { width, height } = viewport;
+    const x = Math.floor(Math.random() * width);
+    const y = Math.floor(Math.random() * height);
+    console.log("...Di chuột ngẫu nhiên...");
+    await page.mouse.move(x, y, { steps: 15 });
+    await randomWait(0.3, 0.6);
+  } catch (e) {
+    console.warn(`⚠️ Lỗi nhỏ trong lúc di chuột: ${e.message}`);
+  }
 }
 
 async function randomSelectText(page) {
@@ -385,14 +363,18 @@ async function hoverRandomly(page, selectors) {
   try {
     const randomSelector =
       selectors[Math.floor(Math.random() * selectors.length)];
-    console.log(`🙄 Rê chuột qua ${randomSelector} nhưng không click...`);
-    await page.waitForSelector(randomSelector, {
+    console.log(`...Rê chuột qua '${randomSelector}' nhưng không click...`);
+    const element = await page.waitForSelector(randomSelector, {
       visible: true,
       timeout: 5000,
     });
-    await page.hover(randomSelector);
-    await randomWait(1, 2.5);
-  } catch (e) {}
+    if (element) {
+      await element.hover();
+      await randomWait(1, 2.5);
+    }
+  } catch (e) {
+    // Bỏ qua nếu không tìm thấy element
+  }
 }
 
 async function simulateZoom(page) {
@@ -450,6 +432,69 @@ async function clickContextMenuItem(page, text) {
   }
   return false;
 }
+async function advancedScroll(page) {
+  logAction("scroll", "Cuộn xuống giữa trang...");
+  await page.evaluate(() => {
+    window.scrollTo({
+      top: document.body.scrollHeight / 2,
+      behavior: "smooth",
+    });
+  });
+  await randomWait(2, 4);
+
+  logAction("scroll", "Cuộn lên đầu trang...");
+  await page.evaluate(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  await randomWait(1, 3);
+
+  logAction("scroll", "Cuộn xuống cuối trang...");
+  await page.evaluate(() => {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth",
+    });
+  });
+  await randomWait(2, 4);
+}
+
+async function randomSelectTextV2(page) {
+  try {
+    console.log("...Giả vờ bôi đen văn bản...");
+    await page.evaluate(() => {
+      const p = document.querySelector("p");
+      if (p) {
+        const range = document.createRange();
+        range.selectNodeContents(p);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
+    await randomWait(1.5, 3);
+  } catch (e) {
+    /* Bỏ qua nếu lỗi */
+  }
+}
+async function simulateTabSwitching(browser) {
+  console.log("...Chuyển sang tab khác một lát...");
+  let tempPage = null;
+  try {
+    tempPage = await browser.newPage();
+    await tempPage.goto("https://vnexpress.net", {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
+    });
+    await randomWait(4, 7); // Lướt tin tức 4-7 giây
+  } catch (e) {
+    console.warn(`⚠️  Lỗi khi mở tab tạm: ${e.message}`);
+  } finally {
+    if (tempPage && !tempPage.isClosed()) {
+      await tempPage.close();
+    }
+    console.log("...Quay lại tab bài báo.");
+  }
+}
 module.exports = {
   randomWait,
   humanLikeTyping,
@@ -467,4 +512,7 @@ module.exports = {
   simulateMemoryLapse,
   clickByVisibleText,
   clickContextMenuItem,
+  advancedScroll,
+  randomSelectTextV2,
+  simulateTabSwitching,
 };

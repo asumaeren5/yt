@@ -6,9 +6,8 @@ const { checkAndLogin } = require("./src/core/auth");
 const { getDynamicPersona } = require("./src/personas/userPersona");
 require("dotenv").config();
 
-const USERNAME = process.env.USERNAME;
-const PASSWORD = process.env.PASSWORD;
-
+const USERNAME = process.env.EUSERNAME;
+const PASSWORD = process.env.EPASSWORD;
 async function main() {
   // === THAY ĐỔI DUY NHẤT Ở ĐÂY ===
   const profileId = "user_01"; // Sử dụng một tên profile cố định

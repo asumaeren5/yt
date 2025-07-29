@@ -13,7 +13,8 @@ const STRATEGIES = [
   {
     name: "Tìm kiếm trên Google",
     action: performGoogleSearch,
-    keywords: getGoogleKeywords(), // <-- LẤY TỪ KHÓA TỪ HÀM MỚI
+    keywords: getGoogleKeywords(),
+    needsBrowser: true, // <-- LẤY TỪ KHÓA TỪ HÀM MỚI
   },
   // {
   //   name: "Xem video YouTube",

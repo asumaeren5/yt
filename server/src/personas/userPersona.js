@@ -5,7 +5,7 @@ const PERSONAS = [
     name: "Sinh viên vội vàng",
     base: {
       mistakeRate: 0.15,
-      distractionChance: 0.1,
+      distractionChance: 0.4,
     },
     moods: {
       lo_lang: {
@@ -24,7 +24,7 @@ const PERSONAS = [
     name: "Nhân viên văn phòng cẩn thận",
     base: {
       mistakeRate: 0.03,
-      distractionChance: 0.4,
+      distractionChance: 0.5,
     },
     moods: {
       tap_trung: {
