@@ -10,6 +10,7 @@ const {
   randomSelectTextV2,
   simulateTabSwitching,
 } = require("../core/humanizer");
+
 async function clickGoogleTab(page, tabText) {
   try {
     console.log(`🧭 Đang tìm tab: "${tabText}"...`);
@@ -46,7 +47,7 @@ async function clickGoogleTab(page, tabText) {
 
 async function performGoogleSearch(page, keyword, browser, persona) {
   console.log(
-    "--- Bắt đầu Module: Google Search v9.2 (Phiên bản hoàn thiện) ---"
+    "--- Bắt đầu Module: Google Search v9.4 (Chống Sập Trình Duyệt) ---"
   );
 
   // ... (Phần tìm kiếm ban đầu giữ nguyên)
@@ -180,42 +181,46 @@ async function readContentInNewTab(url, browser, persona) {
   let newPage = null;
   try {
     newPage = await browser.newPage();
-    // Tăng cường bảo vệ ngay từ lệnh goto
     await newPage.goto(url, { waitUntil: "domcontentloaded", timeout: 40000 });
     console.log(`\t... Đang "đọc" nội dung từ: ${url}`);
 
-    // **SỬA LỖI**: Kiểm tra tab liên tục trước mỗi hành động
-    if (newPage.isClosed()) return; // Nếu tab đã bị đóng, thoát ngay
+    if (newPage.isClosed()) return;
     await advancedScroll(newPage);
 
     if (newPage.isClosed()) return;
-    if (Math.random() < 0.4) {
-      await idleMouseMove(newPage);
-    }
+    if (Math.random() < 0.4) await idleMouseMove(newPage);
 
     if (newPage.isClosed()) return;
-    if (Math.random() < 0.3) {
-      await randomSelectText(newPage);
-    }
+    if (Math.random() < 0.3) await randomSelectTextV2(newPage);
 
     if (newPage.isClosed()) return;
-    if (Math.random() < 0.25) {
-      await simulateTabSwitching(browser);
-    }
+    if (Math.random() < 0.25) await simulateTabSwitching(browser);
 
     if (newPage.isClosed()) return;
     await smartWait("long_pause", persona);
 
-    // Đảm bảo tab vẫn còn mở trước khi đóng nó
     if (!newPage.isClosed()) {
       await newPage.close();
     }
   } catch (e) {
-    // Catch này giờ đây sẽ xử lý các lỗi khác, nhưng lỗi tab sập đã được ngăn chặn
     console.warn(`⚠️ Lỗi khi đọc nội dung từ tab mới: ${e.message}`);
+    // **SỬA LỖI**: Kiểm tra loại lỗi. Nếu là lỗi kết nối, không làm gì cả.
+    const errorMessage = e.message.toLowerCase();
+    if (
+      errorMessage.includes("connection closed") ||
+      errorMessage.includes("detached frame")
+    ) {
+      console.log(
+        "...Kết nối đến tab đã bị đóng bởi trang web. Bỏ qua và tiếp tục."
+      );
+      return; // Thoát khỏi hàm một cách an toàn
+    }
+
+    // Đối với các lỗi khác, vẫn cố gắng đóng tab
     if (newPage && !newPage.isClosed()) {
       await newPage.close();
     }
   }
 }
+
 module.exports = { performGoogleSearch };
